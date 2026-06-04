@@ -68,12 +68,20 @@ def _tiles_from_image(path: Path, args: argparse.Namespace, invisp: InvISPInvers
 
 def _tiles_from_npz_files(paths: Sequence[Path], invisp: InvISPInverse) -> list[PreviewTile]:
     tiles = []
-    for path in sorted(paths):
+    for path in sort_npz_paths_by_ratio(paths):
         data = np.load(path, allow_pickle=True)
         bayer = unpack_bayer(data["low_light_raw"])
         ratio = float(data["ratio"])
         tiles.append(_tile_from_bayer(ratio, bayer, invisp))
     return tiles
+
+
+def sort_npz_paths_by_ratio(paths: Sequence[Path]) -> list[Path]:
+    def ratio_key(path: Path) -> tuple[float, str]:
+        data = np.load(path, allow_pickle=True)
+        return float(data["ratio"]), str(path)
+
+    return sorted(paths, key=ratio_key)
 
 
 def _npz_paths(path: Path) -> list[Path]:
