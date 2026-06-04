@@ -43,19 +43,36 @@ Ratio information is embedded in the output filename (e.g. `preview_r200.png`).
 
 ## Preview Examples
 
-All examples use `--seed 0` for reproducibility.
+All examples use `--seed 0` for reproducibility. Each preview is a 2×2 grid: Original | Low-light RAW (Z-score normalized) | Noisy RAW | ISP RGB.
 
-### Ratio 100 (low-light)
+### Ratio 100
 
-| Input: `1.png` | Input: `P1020171.png` | Input: `P1020177.png` |
-|-----------------|------------------------|------------------------|
-| ![1_r100](docs/previews/1_r100.png) | ![P1020171_r100](docs/previews/P1020171_r100.png) | ![P1020177_r100](docs/previews/P1020177_r100.png) |
+**Input: `1.png`**
+![1_r100](docs/previews/1_r100.png)
+
+**Input: `2..png`**
+![2_r100](docs/previews/2._r100.png)
+
+**Input: `3.png`**
+![3_r100](docs/previews/3_r100.png)
+
+**Input: `4.png`**
+![4_r100](docs/previews/4_r100.png)
 
 ### Ratio 200 (stronger low-light effect)
 
-![P1020171_r200](docs/previews/P1020171_r200.png)
+**Input: `3.png`**
+![3_r200](docs/previews/3_r200.png)
 
-*Each preview grid shows: Original \| Low-light RAW (Z-score normalized) \| Noisy RAW \| ISP RGB.*
+## Tips
+
+> **This is an approximate synthesis only.** The pipeline has inherent limitations:
+>
+> - **InvISP** uses a pretrained checkpoint for **Canon EOS 5D** — an invertible ISP model that learns to map between RAW and RGB for a specific camera. It is not a universal JPEG-to-RAW converter. We rely on its limited cross-camera generalization to approximate RAW reconstruction from arbitrary input images.
+> - **ELD** noise parameters are calibrated for **Canon EOS 5D Mark IV**. The noise profile (K, g_scale) is camera-specific and does not match the actual sensor characteristics of the device that captured the input image.
+> - The input image's original ISP pipeline (white balance, color correction, tone mapping, gamma) and the synthetic pipeline's assumptions may differ substantially.
+>
+> Results are best interpreted as plausible pseudo-RAW approximations for data augmentation or algorithm prototyping, not as physically accurate RAW measurements.
 
 ## Method
 
@@ -103,10 +120,22 @@ assets/camera_params/CanonEOS5D4_params.npy
 
 ## Acknowledgements
 
+### Reference Projects
+
 This repository contains vendored reference projects under `third-party/`. They are not imported by the final runtime package, but they informed the implementation and supplied required assets.
 
-- `third-party/Invertible-ISP`: reference InvISP implementation and Canon checkpoint used for RGB-to-RAW inversion.
-- `third-party/ELD`: reference ELD noise model and CanonEOS5D4 calibrated camera noise parameters.
+- `third-party/Invertible-ISP`: reference InvISP implementation and Canon EOS 5D checkpoint used for RGB-to-RAW inversion.
+- `third-party/ELD`: reference ELD noise model and Canon EOS 5D Mark IV calibrated camera noise parameters.
 - `third-party/DarkFeat`: reference low-light RAW feature pipeline.
 
 Please cite and follow the licenses of the original projects when using this repository in research or derived work.
+
+### Development
+
+This project was developed with the assistance of AI coding agents and models:
+
+- **[Claude Code](https://claude.ai/code)** — Anthropic's agentic coding tool, used for architecture design, implementation, code review, and iterative refinement.
+- **[Codex](https://codex.com)** — OpenAI's coding agent, used for parallel investigation and rescue tasks during development.
+- **[DeepSeek V4 Pro](https://deepseek.com)** — the underlying language model that powered the Claude Code sessions throughout development, handling code generation, analysis, and decision-making.
+
+We are grateful to the teams behind these tools for enabling rapid, high-quality research-code development.
