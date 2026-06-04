@@ -93,19 +93,30 @@ The synthesis pipeline is:
 
 ## Installation
 
-Use a Python environment with NumPy, Pillow, PyTorch, and pytest. The development environment is:
+### Requirements
+
+| Dependency | Minimum Version | Notes |
+|-----------|----------------|-------|
+| Python | 3.10+ | |
+| PyTorch | 2.0+ | CUDA recommended for GPU acceleration |
+| NumPy | 2.0+ | |
+| Pillow | 10.0+ | |
+| pytest | 7.0+ | for running tests |
+| tqdm | 4.0+ | optional, for progress bars |
+
+**Development environment:** Python 3.10.20, PyTorch 2.12.0 (CUDA 13.0), NVIDIA GeForce RTX 5060.
+
+### Setup
 
 ```bash
-/home/rjyu/miniconda3/envs/normal/bin/python
+pip install -r requirements.txt
 ```
 
-Install pytest if needed:
+For PyTorch with CUDA support, follow the [official installation guide](https://pytorch.org/get-started/locally/) matching your CUDA version.
 
-```bash
-/home/rjyu/miniconda3/envs/normal/bin/python -m pip install pytest
-```
+### Required Assets
 
-Required project-owned assets:
+The following project-owned assets must be present:
 
 ```text
 assets/checkpoints/invisp_canon_eos_5d.pth
@@ -115,7 +126,7 @@ assets/camera_params/CanonEOS5D4_params.npy
 ## Testing
 
 ```bash
-/home/rjyu/miniconda3/envs/normal/bin/python -m pytest tests -q
+python -m pytest tests -q
 ```
 
 ## Acknowledgements

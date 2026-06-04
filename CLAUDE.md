@@ -10,29 +10,23 @@ The vendored reference repositories under `third-party/` (InvISP, ELD, DarkFeat)
 
 ## Commands
 
-**Python environment:** `/home/rjyu/miniconda3/envs/normal/bin/python`
-
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+
 # Run all tests
-/home/rjyu/miniconda3/envs/normal/bin/python -m pytest tests -q
+python -m pytest tests -q
 
 # Run a single test file
-/home/rjyu/miniconda3/envs/normal/bin/python -m pytest tests/test_eld_noise.py -q
+python -m pytest tests/test_eld_noise.py -q
 
-# Install test dependencies (if needed)
-/home/rjyu/miniconda3/envs/normal/bin/python -m pip install pytest
+# Synthesis mode: save .npz data files
+python scripts/synthesize_pseudo_lowlight_raw.py \
+  --input data/1.png --output outputs/raw --ratio 100 --seed 0
 
-# Synthesize RAW .npz files from PNG/JPEG images
-/home/rjyu/miniconda3/envs/normal/bin/python scripts/synthesize_pseudo_lowlight_raw.py \
-  --input data/ --output outputs/raw --ratios 100 200 300 --limit 4 --seed 0 --device cpu
-
-# Preview: synthesize and render a single PNG/JPEG input
-/home/rjyu/miniconda3/envs/normal/bin/python scripts/preview_pseudo_lowlight_raw.py \
-  --input data/1.png --output outputs/preview.png --seed 0 --device cpu
-
-# Preview: render existing .npz files
-/home/rjyu/miniconda3/envs/normal/bin/python scripts/preview_pseudo_lowlight_raw.py \
-  --input outputs/raw/ --output outputs/preview.png --device cpu
+# Preview mode: render 2×2 preview grid
+python scripts/preview_pseudo_lowlight_raw.py \
+  --input data/1.png --output outputs/preview_r100.png --ratio 100 --seed 0
 ```
 
 ## Architecture
@@ -62,12 +56,12 @@ PNG/JPEG (HxWx3, [0,1])
 | `invisp_model/` | Copied InvISP network: `InvISPNet` → stack of `InvBlock` → each block has `DenseBlock` sub-networks (F, G, H) + `InvertibleConv1x1` permutation. Bidirectional via `rev` flag |
 | `io.py` | Image discovery, RGB loading (PIL → float32 [0,1] → crop), output-stem naming with SHA1, `.npz` save with all metadata fields |
 | `packing.py` | Pack/unpack between 2D Bayer (H×W) and 4×H/2×W/2 RGGB channel stack |
-| `preview.py` | Nearest-neighbor Bayer demosaic for visualization, ratio-grid PNG rendering with labels |
+| `preview.py` | Nearest-neighbor Bayer demosaic, Z-score normalization for low-light visibility, 2×2 grid PNG rendering |
 
 ### Scripts
 
-- `scripts/synthesize_pseudo_lowlight_raw.py` — batch synthesis of `.npz` files. Iterates images × ratios, produces one `.npz` per combination.
-- `scripts/preview_pseudo_lowlight_raw.py` — renders preview grids. Accepts either a raw image (synthesizes on the fly) or existing `.npz` files (renders pre-computed data). Each tile shows RAW demosaic above InvISP forward RGB.
+- `scripts/synthesize_pseudo_lowlight_raw.py` — batch synthesis of `.npz` files from PNG/JPEG images. Accepts single image or directory via `--input`. Uses `--ratio` for a single exposure ratio.
+- `scripts/preview_pseudo_lowlight_raw.py` — renders a 2×2 preview grid from a single PNG/JPEG input: Original | Low-light RAW (Z-score normalized) | Noisy RAW | ISP RGB. Ratio info is embedded in the output filename.
 
 ### Data format conventions
 
@@ -82,5 +76,5 @@ PNG/JPEG (HxWx3, [0,1])
 - Only `RGGB` CFA is supported; other patterns will raise `ValueError`.
 - The InvISP checkpoint (`assets/checkpoints/invisp_canon_eos_5d.pth`) uses `strict=False` loading — some keys may be missing.
 - Camera params (`assets/camera_params/CanonEOS5D4_params.npy`) contain `Kmin`, `Kmax`, and `Profile-1` with `g_scale` distribution parameters.
-- Device resolution: `"auto"` selects CUDA if available, else CPU. Explicit `"cpu"` or `"cuda:0"` also supported.
+- Device resolution: defaults to `"cuda"`. Use `--device cpu` for CPU-only environments.
 - `ELDNoiseModel` is seeded per-model, not per-call. For deterministic results across multiple images, create a new model with the same seed.
