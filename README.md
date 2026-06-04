@@ -45,6 +45,10 @@ Ratio information is embedded in the output filename (e.g. `preview_r200.png`).
 
 All examples use `--seed 0` for reproducibility. Each preview is a 2×2 grid: Original | Low-light RAW (Z-score normalized) | Noisy RAW | ISP RGB.
 
+> Test images are sampled from:
+> - `1.png`, `2..png` — [Wireframe](https://github.com/huangkuns/wireframe) dataset
+> - `3.png`, `4.png` — [York Urban Line Segment](http://www.elderlab.yorku.ca/resources/york-urban-line-segment-database-information/) database
+
 ### Ratio 100
 
 **Input: `1.png`**
