@@ -3,7 +3,7 @@ import numpy as np
 from pllraw_synthesis.packing import pack_bayer, unpack_bayer
 
 
-def test_pack_bayer_rggb_channel_order_matches_eld_reference():
+def test_pack_bayer_rggb_channel_order_matches_eld_layout():
     bayer = np.array(
         [
             [1.0, 2.0, 5.0, 6.0],

@@ -69,6 +69,8 @@ Testing/
 .cache/
 __pycache__/
 *.py[cod]
+outputs/
+*.npz
 
 # local isolated worktrees
 .worktrees
