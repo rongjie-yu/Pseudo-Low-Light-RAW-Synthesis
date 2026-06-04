@@ -41,11 +41,11 @@ def test_synthesize_parse_args_rejects_preview_flag():
         parse_args(["--input", "/tmp/images", "--output", "/tmp/out", "--ratios", "50", "--preview"])
 
 
-def test_preview_parse_args_defaults_to_six_ratio_grid():
+def test_preview_parse_args_defaults_to_three_ratio_grid():
     args = parse_preview_args(["--input", "/tmp/image.png", "--output", "/tmp/preview.png", "--device", "cpu"])
 
-    assert DEFAULT_PREVIEW_RATIOS == (50.0, 100.0, 150.0, 200.0, 250.0, 300.0)
-    assert args.ratios == [50.0, 100.0, 150.0, 200.0, 250.0, 300.0]
+    assert DEFAULT_PREVIEW_RATIOS == (100.0, 200.0, 300.0)
+    assert args.ratios == [100.0, 200.0, 300.0]
     assert args.device == "cpu"
 
 

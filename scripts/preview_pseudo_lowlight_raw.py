@@ -20,7 +20,7 @@ from pllraw_synthesis.packing import unpack_bayer
 from pllraw_synthesis.preview import PreviewTile, bayer_to_nearest_rgb, save_ratio_grid_preview
 
 
-DEFAULT_PREVIEW_RATIOS = (50.0, 100.0, 150.0, 200.0, 250.0, 300.0)
+DEFAULT_PREVIEW_RATIOS = (100.0, 200.0, 300.0)
 DEFAULT_PARAMS = Path("assets/camera_params/CanonEOS5D4_params.npy")
 
 
