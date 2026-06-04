@@ -75,3 +75,4 @@ outputs/
 # local isolated worktrees
 .worktrees
 .worktrees/
+.superpowers/

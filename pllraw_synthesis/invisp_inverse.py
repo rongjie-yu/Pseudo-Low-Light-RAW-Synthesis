@@ -48,8 +48,20 @@ class InvISPInverse:
         raw = raw.squeeze(0).permute(1, 2, 0).cpu().numpy()
         return raw.astype(np.float32, copy=False)
 
+    @staticmethod
+    def postprocess_rgb(rgb_tensor: torch.Tensor) -> np.ndarray:
+        rgb = torch.clamp(rgb_tensor.detach(), 0.0, 1.0)
+        rgb = rgb.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        return rgb.astype(np.float32, copy=False)
+
     def rgb_to_demosaiced_raw(self, rgb: np.ndarray) -> np.ndarray:
         tensor = self.prepare_rgb_tensor(rgb, self.device)
         with torch.no_grad():
             raw = self.model(tensor, rev=True)
         return self.postprocess_demosaiced_raw(raw)
+
+    def demosaiced_raw_to_rgb(self, demosaiced_raw: np.ndarray) -> np.ndarray:
+        tensor = self.prepare_rgb_tensor(demosaiced_raw, self.device)
+        with torch.no_grad():
+            rgb = self.model(tensor, rev=False)
+        return self.postprocess_rgb(rgb)

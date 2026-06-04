@@ -3,17 +3,23 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from pllraw_synthesis.preview import save_preview
+from pllraw_synthesis.preview import PreviewTile, save_ratio_grid_preview
 
 
-def test_save_preview_writes_png(tmp_path: Path):
-    clean = np.full((4, 4), 0.25, dtype=np.float32)
-    low = np.full((4, 4), 0.75, dtype=np.float32)
+def test_save_ratio_grid_preview_uses_three_by_two_layout(tmp_path: Path):
+    tiles = [
+        PreviewTile(
+            ratio=float(ratio),
+            raw_demosaic=np.full((8, 10, 3), ratio / 300.0, dtype=np.float32),
+            isp_rgb=np.full((8, 10, 3), 1.0 - ratio / 300.0, dtype=np.float32),
+        )
+        for ratio in (50, 100, 150, 200, 250, 300)
+    ]
     output = tmp_path / "preview.png"
 
-    save_preview(output, clean_bayer=clean, low_light_bayer=low)
+    save_ratio_grid_preview(output, tiles)
 
     assert output.exists()
     with Image.open(output) as img:
         assert img.mode == "RGB"
-        assert img.size == (8, 4)
+        assert img.size == (30, 72)

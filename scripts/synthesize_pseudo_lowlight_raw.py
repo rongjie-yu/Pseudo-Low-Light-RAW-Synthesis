@@ -21,7 +21,6 @@ from pllraw_synthesis.eld_noise import ELDNoiseModel
 from pllraw_synthesis.invisp_inverse import InvISPInverse
 from pllraw_synthesis.io import discover_images, load_rgb_image, make_output_stem, save_npz
 from pllraw_synthesis.packing import pack_bayer
-from pllraw_synthesis.preview import save_preview
 
 
 DEFAULT_PARAMS = Path("assets/camera_params/CanonEOS5D4_params.npy")
@@ -32,7 +31,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input", required=True, help="Input image file or directory.")
     parser.add_argument("--output", required=True, help="Output directory.")
     parser.add_argument("--ratios", required=True, nargs="+", type=float, help="One or more low-light ratios.")
-    parser.add_argument("--preview", action="store_true", help="Write diagnostic preview PNGs.")
     parser.add_argument("--limit", type=int, default=None, help="Maximum number of input images to process.")
     parser.add_argument("--seed", type=int, default=None, help="Seed for deterministic ELD noise sampling.")
     parser.add_argument("--device", default="auto", help="Torch device: auto, cpu, cuda, or cuda:0.")
@@ -49,7 +47,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def run(args: argparse.Namespace) -> int:
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
-    preview_dir = output_dir / "preview"
     images = discover_images(args.input)
     if args.limit is not None:
         images = images[: args.limit]
@@ -78,8 +75,6 @@ def run(args: argparse.Namespace) -> int:
                 "saturation_level": noise_params.saturation_level,
             }
             save_npz(output_dir / f"{stem}.npz", clean_raw=clean_packed, low_light_raw=low_packed, metadata=metadata)
-            if args.preview:
-                save_preview(preview_dir / f"{stem}.png", clean_bayer=clean_bayer, low_light_bayer=low_bayer)
 
     return 0
 

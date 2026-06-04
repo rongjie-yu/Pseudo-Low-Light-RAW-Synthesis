@@ -1,9 +1,19 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import math
 from pathlib import Path
+from typing import Sequence
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
+
+
+@dataclass(frozen=True)
+class PreviewTile:
+    ratio: float
+    raw_demosaic: np.ndarray
+    isp_rgb: np.ndarray
 
 
 def _to_uint8(raw: np.ndarray) -> np.ndarray:
@@ -39,10 +49,43 @@ def bayer_to_nearest_rgb(bayer: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def save_preview(output_path: str | Path, clean_bayer: np.ndarray, low_light_bayer: np.ndarray) -> None:
+def save_ratio_grid_preview(output_path: str | Path, tiles: Sequence[PreviewTile], columns: int = 3) -> None:
+    if not tiles:
+        raise ValueError("Expected at least one preview tile")
+    if columns <= 0:
+        raise ValueError(f"columns must be positive, got {columns}")
+
+    first_shape = tiles[0].raw_demosaic.shape
+    if len(first_shape) != 3 or first_shape[2] != 3:
+        raise ValueError(f"Expected HxWx3 preview arrays, got {first_shape}")
+
+    tile_h, tile_w = first_shape[:2]
+    label_h = 20
+    cell_h = label_h + tile_h * 2
+    rows = math.ceil(len(tiles) / columns)
+    canvas = np.zeros((rows * cell_h, columns * tile_w, 3), dtype=np.uint8)
+
+    for index, tile in enumerate(tiles):
+        if tile.raw_demosaic.shape != first_shape or tile.isp_rgb.shape != first_shape:
+            raise ValueError("All preview arrays must share the same HxWx3 shape")
+        row = index // columns
+        col = index % columns
+        y0 = row * cell_h
+        x0 = col * tile_w
+
+        canvas[y0 : y0 + label_h, x0 : x0 + tile_w] = 24
+        canvas[y0 + label_h : y0 + label_h + tile_h, x0 : x0 + tile_w] = _to_uint8(tile.raw_demosaic)
+        canvas[y0 + label_h + tile_h : y0 + cell_h, x0 : x0 + tile_w] = _to_uint8(tile.isp_rgb)
+
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    clean_rgb = bayer_to_nearest_rgb(clean_bayer)
-    low_rgb = bayer_to_nearest_rgb(low_light_bayer)
-    preview = np.concatenate((_to_uint8(clean_rgb), _to_uint8(low_rgb)), axis=1)
-    Image.fromarray(preview, mode="RGB").save(output)
+    image = Image.fromarray(canvas, mode="RGB")
+    draw = ImageDraw.Draw(image)
+    for index, tile in enumerate(tiles):
+        row = index // columns
+        col = index % columns
+        y0 = row * cell_h
+        x0 = col * tile_w
+        label = f"ratio {tile.ratio:g}"
+        draw.text((x0 + 4, y0 + 4), label, fill=(235, 235, 235))
+    image.save(output)
