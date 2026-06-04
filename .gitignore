@@ -76,3 +76,5 @@ outputs/
 .worktrees
 .worktrees/
 .superpowers/
+.codex/
+.agents/

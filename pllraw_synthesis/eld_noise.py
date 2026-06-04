@@ -58,11 +58,18 @@ class ELDNoiseModel:
         clean_raw: np.ndarray,
         ratio: float,
         params: Optional[NoiseParams] = None,
+        *,
+        amplify: bool = True,
     ) -> Tuple[np.ndarray, NoiseParams]:
         if ratio <= 0:
             raise ValueError(f"ratio must be positive, got {ratio}")
         if clean_raw.ndim != 2:
             raise ValueError(f"Expected 2D clean Bayer RAW, got shape {clean_raw.shape}")
+        if params is not None and params.ratio != float(ratio):
+            raise ValueError(
+                f"Explicit params ratio ({params.ratio}) does not match ratio argument ({ratio}). "
+                f"When providing explicit NoiseParams, ratio must match the apply() ratio argument."
+            )
 
         used = params if params is not None else self.sample_params(ratio)
         y = clean_raw.astype(np.float32, copy=False)
@@ -75,7 +82,8 @@ class ELDNoiseModel:
         if used.g_scale > 0:
             z = z + self.rng.standard_normal(size=y.shape).astype(np.float32) * max(used.g_scale, 1e-10)
 
-        z = z * used.ratio
+        if amplify:
+            z = z * used.ratio
         z = z / used.saturation_level
         z = np.clip(z, 0.0, 1.0).astype(np.float32, copy=False)
         return z, used

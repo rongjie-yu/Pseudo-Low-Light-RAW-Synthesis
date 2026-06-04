@@ -30,10 +30,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Synthesize pseudo low-light RAW from RGB PNG/JPEG images.")
     parser.add_argument("--input", required=True, help="Input image file or directory.")
     parser.add_argument("--output", required=True, help="Output directory.")
-    parser.add_argument("--ratios", required=True, nargs="+", type=float, help="One or more low-light ratios.")
+    parser.add_argument("--ratio", required=True, type=float, help="Low-light exposure ratio (e.g. 100, 200, 300).")
     parser.add_argument("--limit", type=int, default=None, help="Maximum number of input images to process.")
     parser.add_argument("--seed", type=int, default=None, help="Seed for deterministic ELD noise sampling.")
-    parser.add_argument("--device", default="auto", help="Torch device: auto, cpu, cuda, or cuda:0.")
+    parser.add_argument("--device", default="cuda", help="Torch device: cuda, cpu, or cuda:0.")
     parser.add_argument("--cfa", default="RGGB", help="CFA pattern. First version supports RGGB.")
     parser.add_argument(
         "--checkpoint",
@@ -62,19 +62,18 @@ def run(args: argparse.Namespace) -> int:
         clean_bayer = extract_bayer(demosaiced, cfa=args.cfa)
         clean_packed = pack_bayer(clean_bayer)
 
-        for ratio in args.ratios:
-            low_bayer, noise_params = noise_model.apply(clean_bayer, ratio=ratio)
-            low_packed = pack_bayer(low_bayer)
-            stem = make_output_stem(image_path, ratio)
-            metadata = {
-                **crop_meta,
-                "ratio": float(ratio),
-                "source_path": str(image_path),
-                "cfa": args.cfa.upper(),
-                "noise_params": noise_params.to_dict(),
-                "saturation_level": noise_params.saturation_level,
-            }
-            save_npz(output_dir / f"{stem}.npz", clean_raw=clean_packed, low_light_raw=low_packed, metadata=metadata)
+        low_bayer, noise_params = noise_model.apply(clean_bayer, ratio=args.ratio)
+        low_packed = pack_bayer(low_bayer)
+        stem = make_output_stem(image_path, args.ratio)
+        metadata = {
+            **crop_meta,
+            "ratio": float(args.ratio),
+            "source_path": str(image_path),
+            "cfa": args.cfa.upper(),
+            "noise_params": noise_params.to_dict(),
+            "saturation_level": noise_params.saturation_level,
+        }
+        save_npz(output_dir / f"{stem}.npz", clean_raw=clean_packed, low_light_raw=low_packed, metadata=metadata)
 
     return 0
 

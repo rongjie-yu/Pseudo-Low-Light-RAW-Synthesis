@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import math
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -49,43 +47,78 @@ def bayer_to_nearest_rgb(bayer: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def save_ratio_grid_preview(output_path: str | Path, tiles: Sequence[PreviewTile], columns: int = 3) -> None:
-    if not tiles:
-        raise ValueError("Expected at least one preview tile")
-    if columns <= 0:
-        raise ValueError(f"columns must be positive, got {columns}")
+def normalize_for_display(raw: np.ndarray) -> np.ndarray:
+    """Z-score normalize a grayscale-converted image for visibility.
 
-    first_shape = tiles[0].raw_demosaic.shape
-    if len(first_shape) != 3 or first_shape[2] != 3:
-        raise ValueError(f"Expected HxWx3 preview arrays, got {first_shape}")
+    Designed for extremely dark low-light RAW demosaics that are nearly
+    invisible under direct [0,1] clipping.  Returns a float32 [0,1] array
+    with the same spatial shape as *raw*.
+    """
+    gray = raw.astype(np.float64).mean(axis=-1)
+    mean = float(gray.mean())
+    std = float(gray.std())
+    if std < 1e-10:
+        std = 1.0
+    z = (gray - mean) / std
+    z_min = float(z.min())
+    z_max = float(z.max())
+    z_norm = (z - z_min) / max(z_max - z_min, 1e-10)
+    return np.dstack([z_norm] * raw.shape[-1]).astype(np.float32)
 
-    tile_h, tile_w = first_shape[:2]
+
+def save_grid_preview(
+    output_path: str | Path,
+    original_rgb: np.ndarray,
+    low_light_demosaic: np.ndarray,
+    tile: PreviewTile,
+) -> None:
+    """Render a 2×2 preview grid.
+
+    Layout::
+
+        row 0:  Original       |  Low-light RAW
+        row 1:  Noisy RAW      |  ISP RGB
+
+    Each cell has a 20 px label bar.  No ratio label is drawn on the image;
+    embed the ratio in the output filename instead.
+    """
+    if original_rgb.ndim != 3 or original_rgb.shape[2] != 3:
+        raise ValueError(f"Expected HxWx3 original RGB, got shape {original_rgb.shape}")
+    if low_light_demosaic.ndim != 3 or low_light_demosaic.shape[2] != 3:
+        raise ValueError(f"Expected HxWx3 low-light demosaic, got shape {low_light_demosaic.shape}")
+    if tile.raw_demosaic.ndim != 3 or tile.raw_demosaic.shape[2] != 3:
+        raise ValueError(f"Expected HxWx3 noisy RAW demosaic, got shape {tile.raw_demosaic.shape}")
+    if tile.isp_rgb.ndim != 3 or tile.isp_rgb.shape[2] != 3:
+        raise ValueError(f"Expected HxWx3 ISP RGB, got shape {tile.isp_rgb.shape}")
+
+    tile_h, tile_w = original_rgb.shape[:2]
     label_h = 20
-    cell_h = label_h + tile_h * 2
-    rows = math.ceil(len(tiles) / columns)
-    canvas = np.zeros((rows * cell_h, columns * tile_w, 3), dtype=np.uint8)
+    cell_h = label_h + tile_h
 
-    for index, tile in enumerate(tiles):
-        if tile.raw_demosaic.shape != first_shape or tile.isp_rgb.shape != first_shape:
-            raise ValueError("All preview arrays must share the same HxWx3 shape")
-        row = index // columns
-        col = index % columns
+    canvas = np.zeros((2 * cell_h, 2 * tile_w, 3), dtype=np.uint8)
+
+    cells = [
+        (0, 0, "Original", _to_uint8(original_rgb)),
+        (0, 1, "Low-light RAW", _to_uint8(low_light_demosaic)),
+        (1, 0, "Noisy RAW", _to_uint8(tile.raw_demosaic)),
+        (1, 1, "ISP RGB", _to_uint8(tile.isp_rgb)),
+    ]
+
+    for row, col, _label, img_uint8 in cells:
         y0 = row * cell_h
         x0 = col * tile_w
 
         canvas[y0 : y0 + label_h, x0 : x0 + tile_w] = 24
-        canvas[y0 + label_h : y0 + label_h + tile_h, x0 : x0 + tile_w] = _to_uint8(tile.raw_demosaic)
-        canvas[y0 + label_h + tile_h : y0 + cell_h, x0 : x0 + tile_w] = _to_uint8(tile.isp_rgb)
+        canvas[y0 + label_h : y0 + cell_h, x0 : x0 + tile_w] = img_uint8
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     image = Image.fromarray(canvas, mode="RGB")
     draw = ImageDraw.Draw(image)
-    for index, tile in enumerate(tiles):
-        row = index // columns
-        col = index % columns
+
+    for row, col, label, _ in cells:
         y0 = row * cell_h
         x0 = col * tile_w
-        label = f"ratio {tile.ratio:g}"
-        draw.text((x0 + 4, y0 + 4), label, fill=(235, 235, 235))
+        draw.text((x0 + 4, y0 + 1), label, fill=(235, 235, 235))
+
     image.save(output)

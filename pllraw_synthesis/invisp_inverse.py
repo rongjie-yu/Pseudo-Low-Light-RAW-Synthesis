@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +24,16 @@ class InvISPInverse:
         self.device = self.resolve_device(device)
         self.model = InvISPNet(channel_in=3, channel_out=3, block_num=8).to(self.device)
         state_dict = torch.load(self.checkpoint_path, map_location=self.device)
-        self.model.load_state_dict(state_dict, strict=False)
+        missing, unexpected = self.model.load_state_dict(state_dict, strict=False)
+        if missing:
+            warnings.warn(f"Missing keys in checkpoint '{self.checkpoint_path}': {missing}")
+        non_actnorm_unexpected = [
+            k for k in unexpected if not k.endswith((".actnorm.bias", ".actnorm.logs"))
+        ]
+        if non_actnorm_unexpected:
+            warnings.warn(
+                f"Unexpected keys in checkpoint '{self.checkpoint_path}': {non_actnorm_unexpected}"
+            )
         self.model.eval()
 
     @staticmethod
@@ -46,12 +56,16 @@ class InvISPInverse:
     def postprocess_demosaiced_raw(raw_tensor: torch.Tensor) -> np.ndarray:
         raw = torch.clamp(raw_tensor.detach(), 0.0, 1.0)
         raw = raw.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        if not np.isfinite(raw).all():
+            raise RuntimeError("InvISP inverse produced non-finite values in demosaiced RAW output")
         return raw.astype(np.float32, copy=False)
 
     @staticmethod
     def postprocess_rgb(rgb_tensor: torch.Tensor) -> np.ndarray:
         rgb = torch.clamp(rgb_tensor.detach(), 0.0, 1.0)
         rgb = rgb.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        if not np.isfinite(rgb).all():
+            raise RuntimeError("InvISP forward produced non-finite values in RGB output")
         return rgb.astype(np.float32, copy=False)
 
     def rgb_to_demosaiced_raw(self, rgb: np.ndarray) -> np.ndarray:

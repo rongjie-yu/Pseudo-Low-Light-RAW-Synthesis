@@ -1,0 +1,9 @@
+[submodule "third-party/Invertible-ISP"]
+	path = third-party/Invertible-ISP
+	url = https://github.com/yzxing87/Invertible-ISP.git
+[submodule "third-party/ELD"]
+	path = third-party/ELD
+	url = https://github.com/Vandermode/ELD.git
+[submodule "third-party/DarkFeat"]
+	path = third-party/DarkFeat
+	url = https://github.com/THU-LYJ-Lab/DarkFeat.git
